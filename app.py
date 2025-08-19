@@ -11,7 +11,6 @@ import os
 mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramongo:LeoyDem01@cluster0.aemc3mn.mongodb.net/dbapp?retryWrites=true&w=majority&appName=Cluster0&connectTimeoutMS=10000&socketTimeoutMS=10000")
 client = MongoClient(mongo_uri)
 db = client.get_database('dbapp')  # Cambia 'sample_mflix' por el nombre de tu base de datos
-usuarios_collection = db.users
 @app.route('/')
 def home():
     # Obtener todas las colecciones
@@ -28,10 +27,6 @@ def mostrar_coleccion(nombre):
     documentos = list(coleccion.find({}, {'_id': 0}))
     html = f"<h2>Colección: {nombre}</h2><pre>{documentos}</pre>"
     return html
-@app.route('/users', methods=['GET'])
-def get_users():
-    users = list(usuarios_collection.find({}, {'_id': 0}))
-    return jsonify(users)
 
 if __name__ == '__main__':
     import os
