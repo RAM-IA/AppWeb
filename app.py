@@ -15,22 +15,30 @@ db = client.get_database('dbapp')  # Cambia 'sample_mflix' por el nombre de tu b
 def home():
     # Obtener todas las colecciones
     colecciones = db.list_collection_names()
-    # Mensaje de depuración
-    html = f"<h2>Colecciones en la base de datos nueva cadena: {len(colecciones)}</h2>"
-    html += f"<p>Listado: {colecciones}</p>"
-    html += "<ul>"
-    for col in colecciones:
-        html += f'<li><a href="/coleccion/{col}" target="_blank">{col}</a></li>'
+    html = """
+<h2>Menú de opciones para la colección 'usuarios'</h2>
+<form action='/agregar' method='post'>
+  <input type='text' name='id' placeholder='Id' required>
+  <input type='text' name='nombre' placeholder='Nombre' required>
+  <input type='text' name='direccion' placeholder='Dirección' required>
+  <button type='submit'>Agregar usuario</button>
+</form>
+<form action='/modificar' method='post' style='margin-top:10px;'>
+  <input type='text' name='id' placeholder='Id a modificar' required>
+  <input type='text' name='nombre' placeholder='Nuevo nombre'>
+  <input type='text' name='direccion' placeholder='Nueva dirección'>
+  <button type='submit'>Modificar usuario</button>
+</form>
+<form action='/eliminar' method='post' style='margin-top:10px;'>
+  <input type='text' name='id' placeholder='Id a eliminar' required>
+  <button type='submit'>Eliminar usuario</button>
+</form>
+<hr>
+<h3>Usuarios actuales:</h3>
+<ul>
+"""
+    usuarios = list(db.usuarios.find({}, {'_id': 0}))
+    for u in usuarios:
+        html += f"<li>{u}</li>"
     html += "</ul>"
     return html
-@app.route('/coleccion/<nombre>')
-def mostrar_coleccion(nombre):
-    coleccion = db[nombre]
-    documentos = list(coleccion.find({}, {'_id': 0}))
-    html = f"<h2>Colección: {nombre}</h2><pre>{documentos}</pre>"
-    return html
-
-if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
