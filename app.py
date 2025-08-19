@@ -10,7 +10,10 @@ CORS(app)
 import os
 mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramsj:LeoyDem01@cluster0.1fgzarl.mongodb.net/")
 client = MongoClient(mongo_uri)
-db = client.get_database('dbapp')  # Cambia 'sample_mflix' por el nombre de tu base de datos
+db = client.get_database('dbapp')  
+usuarios = db['usuarios']
+print(list(usuarios.find()))
+
 @app.route('/')
 def home():
     # Obtener todas las colecciones
