@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, redirect
 from flask_cors import CORS
 from pymongo import MongoClient
 
@@ -42,3 +42,31 @@ def home():
         html += f"<li>{u}</li>"
     html += "</ul>"
     return html
+
+@app.route('/agregar', methods=['POST'])
+def agregar_usuario():
+    id = request.form.get('id')
+    nombre = request.form.get('nombre')
+    direccion = request.form.get('direccion')
+    db.usuarios.insert_one({'id': id, 'nombre': nombre, 'direccion': direccion})
+    return redirect('/')
+
+@app.route('/modificar', methods=['POST'])
+def modificar_usuario():
+    id = request.form.get('id')
+    nombre = request.form.get('nombre')
+    direccion = request.form.get('direccion')
+    update = {}
+    if nombre:
+        update['nombre'] = nombre
+    if direccion:
+        update['direccion'] = direccion
+    if update:
+        db.usuarios.update_one({'id': id}, {'$set': update})
+    return redirect('/')
+
+@app.route('/eliminar', methods=['POST'])
+def eliminar_usuario():
+    id = request.form.get('id')
+    db.usuarios.delete_one({'id': id})
+    return redirect('/')
