@@ -16,7 +16,7 @@ def home():
     # Obtener todas las colecciones
     colecciones = db.list_collection_names()
     # Generar HTML con links
-    html = "<h2>Colecciones en la base de datos:</h2><ul>"
+    html = "<h2>Colecciones en la base de datos2:</h2><ul>"
     for col in colecciones:
         html += f'<li><a href="/coleccion/{col}" target="_blank">{col}</a></li>'
     html += "</ul>"
