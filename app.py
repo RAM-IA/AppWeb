@@ -14,7 +14,20 @@ db = client.get_database('sample_mflix')  # Cambia 'test' por el nombre de tu ba
 usuarios_collection = db.users
 @app.route('/')
 def home():
-    return "API Flask funcionando de nuevo3: User" + " " + str(usuarios_collection.count_documents({}))
+    # Obtener todas las colecciones
+    colecciones = db.list_collection_names()
+    # Generar HTML con links
+    html = "<h2>Colecciones en la base de datos:</h2><ul>"
+    for col in colecciones:
+        html += f'<li><a href="/coleccion/{col}" target="_blank">{col}</a></li>'
+    html += "</ul>"
+    return html
+@app.route('/coleccion/<nombre>')
+def mostrar_coleccion(nombre):
+    coleccion = db[nombre]
+    documentos = list(coleccion.find({}, {'_id': 0}))
+    html = f"<h2>Colección: {nombre}</h2><pre>{documentos}</pre>"
+    return html
 @app.route('/users', methods=['GET'])
 def get_users():
     users = list(usuarios_collection.find({}, {'_id': 0}))
