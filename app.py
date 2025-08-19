@@ -8,7 +8,7 @@ CORS(app)
 
 # Conexión a MongoDB Atlas
 import os
-mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramsj:LeoyDem01@cluster0.1fgzarl.mongodb.net/dbapp?retryWrites=true&w=majority&appName=Cluster0")
+mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramsj:LeoyDem01@cluster0.1fgzarl.mongodb.net/")
 client = MongoClient(mongo_uri)
 db = client.get_database('dbapp')  # Cambia 'sample_mflix' por el nombre de tu base de datos
 @app.route('/')
@@ -16,7 +16,7 @@ def home():
     # Obtener todas las colecciones
     colecciones = db.list_collection_names()
     # Mensaje de depuración
-    html = f"<h2>Colecciones en la base de datos: {len(colecciones)}</h2>"
+    html = f"<h2>Colecciones en la base de datos nueva cadena: {len(colecciones)}</h2>"
     html += f"<p>Listado: {colecciones}</p>"
     html += "<ul>"
     for col in colecciones:
