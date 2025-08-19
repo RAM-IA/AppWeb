@@ -14,7 +14,7 @@ db = client.get_database('sample_mflix')  # Cambia 'test' por el nombre de tu ba
 usuarios_collection = db.users
 @app.route('/')
 def home():
-    return "API Flask funcionando de nuevo2: User" + " " + str(usuarios_collection.count_documents({}))
+    return "API Flask funcionando de nuevo3: User" + " " + str(usuarios_collection.count_documents({}))
 @app.route('/users', methods=['GET'])
 def get_users():
     users = list(usuarios_collection.find({}, {'_id': 0}))

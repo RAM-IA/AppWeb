@@ -3,6 +3,4 @@ services:
     name: flask-api
     env: python
     buildCommand: ""
-    startCommand: gunicorn backend.api:app --chdir backend --timeout 120
-
-
+    startCommand: gunicorn backend.api:app --chdir backend --timeout 60
