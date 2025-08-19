@@ -8,9 +8,9 @@ CORS(app)
 
 # Conexión a MongoDB Atlas
 import os
-mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramongo:LeoyDem01@cluster0.aemc3mn.mongodb.net/sample_mflix?retryWrites=true&w=majority&appName=Cluster0&connectTimeoutMS=10000&socketTimeoutMS=10000")
+mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramongo:LeoyDem01@cluster0.aemc3mn.mongodb.net/dbapp?retryWrites=true&w=majority&appName=Cluster0&connectTimeoutMS=10000&socketTimeoutMS=10000")
 client = MongoClient(mongo_uri)
-db = client.get_database('sample_mflix')  # Cambia 'test' por el nombre de tu base de datos si es diferente
+db = client.get_database('dbapp')  # Cambia 'sample_mflix' por el nombre de tu base de datos
 usuarios_collection = db.users
 @app.route('/')
 def home():
