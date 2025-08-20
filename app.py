@@ -121,12 +121,12 @@ def ventas():
         </style>
         <div class="venta-container">
             <h2>Captura de Venta</h2>
-            <form class="venta-form" id="form-agregar">
-                <input type="number" min="1" value="1" id="cantidad" placeholder="Cantidad" required>
+            <form class="venta-form" id="form-agregar" autocomplete="off">
+                <input type="number" min="1" value="1" id="cantidad" placeholder="Cantidad" style="display:none">
                 <input type="text" id="codigo_barras" placeholder="Código de Barras" autofocus>
                 <input type="text" id="descripcion" placeholder="Descripción">
-                <button type="submit">Agregar</button>
             </form>
+            <div id="resultados" style="background:#fff;border:1px solid #ccc;max-height:200px;overflow-y:auto;display:none;position:absolute;z-index:10;width:90%"></div>
             <table class="venta-list" id="tabla-productos" style="width:100%">
                 <thead><tr><th>Cant</th><th>Código</th><th>Descripción</th><th>Precio</th><th>Importe</th></tr></thead>
                 <tbody></tbody>
@@ -151,42 +151,97 @@ def ventas():
             });
             document.getElementById('total').textContent = '$' + total.toFixed(2);
         }
-        document.getElementById('form-agregar').onsubmit = async function(e) {
-            e.preventDefault();
-            let cantidad = parseInt(document.getElementById('cantidad').value);
-            let codigo = document.getElementById('codigo_barras').value.trim();
-            let desc = document.getElementById('descripcion').value.trim();
-            if (!codigo && !desc) return alert('Ingresa código o descripción');
-            let producto = null;
-            if (codigo) {
+        const codigoInput = document.getElementById('codigo_barras');
+        const descInput = document.getElementById('descripcion');
+        const resultadosDiv = document.getElementById('resultados');
+        let resultados = [];
+        let seleccionIdx = 0;
+
+        codigoInput.addEventListener('keydown', async function(e) {
+            if (e.key === 'Enter' && codigoInput.value.trim()) {
+                e.preventDefault();
+                let codigo = codigoInput.value.trim();
                 let res = await fetch(`/buscar_producto?codigo_barras=${codigo}`);
-                let data = await res.text();
-                let match = data.match(/'descripcion': '([^']+)'/);
-                let precioMatch = data.match(/'precio': ([0-9.]+)/);
-                if (match && precioMatch) {
-                    producto = {codigo_barras: codigo, descripcion: match[1], precio: parseFloat(precioMatch[1])};
-                } else {
-                    return alert('Producto no encontrado');
-                }
-            } else if (desc) {
-                let res = await fetch(`/productos`);
-                let html = await res.text();
-                let regex = new RegExp(`<li class='producto-item'>.*'descripcion': '${desc}'.*?</li>`, 'i');
-                let item = html.match(regex);
-                if (item) {
-                    let codMatch = item[0].match(/'codigo_barras': '([^']+)'/);
-                    let precioMatch = item[0].match(/'precio': ([0-9.]+)/);
-                    if (codMatch && precioMatch) {
-                        producto = {codigo_barras: codMatch[1], descripcion: desc, precio: parseFloat(precioMatch[1])};
+                if (res.ok) {
+                    let producto = await res.json();
+                    let idx = productos.findIndex(p => p.codigo_barras === producto.codigo_barras);
+                    if (idx >= 0) {
+                        productos[idx].cantidad += 1;
+                    } else {
+                        productos.push({cantidad: 1, ...producto});
                     }
+                    actualizarTabla();
+                    codigoInput.value = '';
+                } else {
+                    alert('Producto no encontrado');
                 }
-                if (!producto) return alert('Producto no encontrado por descripción');
             }
-            productos.push({cantidad, ...producto});
+        });
+
+        descInput.addEventListener('keydown', async function(e) {
+            if (e.key === 'Enter' && descInput.value.trim()) {
+                e.preventDefault();
+                let desc = descInput.value.trim();
+                let res = await fetch(`/buscar_producto?descripcion=${encodeURIComponent(desc)}`);
+                if (res.ok) {
+                    resultados = await res.json();
+                    if (resultados.length === 0) {
+                        resultadosDiv.style.display = 'none';
+                        alert('No hay coincidencias');
+                        return;
+                    }
+                    mostrarResultados();
+                }
+            } else if (e.key === 'ArrowDown') {
+                if (resultados.length > 0) {
+                    seleccionIdx = Math.min(seleccionIdx + 1, resultados.length - 1);
+                    resaltarSeleccion();
+                }
+            } else if (e.key === 'ArrowUp') {
+                if (resultados.length > 0) {
+                    seleccionIdx = Math.max(seleccionIdx - 1, 0);
+                    resaltarSeleccion();
+                }
+            } else if (e.key === 'Escape') {
+                resultadosDiv.style.display = 'none';
+                descInput.focus();
+            } else if (e.key === 'Enter' && resultados.length > 0) {
+                e.preventDefault();
+                agregarSeleccionado();
+            }
+        });
+
+        function mostrarResultados() {
+            resultadosDiv.innerHTML = resultados.map((p, i) => `<div class='resultado-item' style='padding:8px;cursor:pointer;background:${i===seleccionIdx?'#e0e0ff':'#fff'}'>${p.descripcion} ($${p.precio})</div>`).join('');
+            resultadosDiv.style.display = '';
+            resaltarSeleccion();
+        }
+        function resaltarSeleccion() {
+            let items = resultadosDiv.querySelectorAll('.resultado-item');
+            items.forEach((el, i) => {
+                el.style.background = i === seleccionIdx ? '#e0e0ff' : '#fff';
+            });
+        }
+        resultadosDiv.addEventListener('click', function(e) {
+            let idx = Array.from(resultadosDiv.children).indexOf(e.target);
+            seleccionIdx = idx;
+            agregarSeleccionado();
+        });
+        function agregarSeleccionado() {
+            let producto = resultados[seleccionIdx];
+            if (!producto) return;
+            let idx = productos.findIndex(p => p.codigo_barras === producto.codigo_barras);
+            if (idx >= 0) {
+                productos[idx].cantidad += 1;
+            } else {
+                productos.push({cantidad: 1, ...producto});
+            }
             actualizarTabla();
-            document.getElementById('form-agregar').reset();
-            document.getElementById('codigo_barras').focus();
-        };
+            resultadosDiv.style.display = 'none';
+            descInput.value = '';
+            resultados = [];
+            seleccionIdx = 0;
+        }
         document.getElementById('tabla-productos').addEventListener('input', function(e) {
             if (e.target.classList.contains('cantidad-input')) {
                 let idx = e.target.getAttribute('data-idx');
@@ -232,24 +287,24 @@ def ventas():
 def compras():
     return "<h2>Compras</h2><a href='/'>Volver al menú principal</a>"
 
-@app.route('/buscar_producto', methods=['GET', 'POST'])
+from flask import jsonify
+
+@app.route('/buscar_producto', methods=['GET'])
 def buscar_producto():
-    html = '''
-    <h2>Buscar Producto</h2>
-    <form action='/buscar_producto' method='post'>
-      <input type='text' name='codigo_barras' placeholder='Código de Barras (ID)' required>
-      <button type='submit'>Buscar</button>
-    </form>
-    '''
-    if request.method == 'POST':
-        codigo_barras = request.form.get('codigo_barras')
+    codigo_barras = request.args.get('codigo_barras')
+    descripcion = request.args.get('descripcion')
+    if codigo_barras:
         producto = db.productos.find_one({'codigo_barras': codigo_barras}, {'_id': 0})
         if producto:
-            html += f"<h3>Resultado:</h3><pre>{producto}</pre>"
+            return jsonify(producto)
         else:
-            html += "<h3>No se encontró el producto.</h3>"
-    html += "<a href='/productos'>Volver a Productos</a>"
-    return html
+            return jsonify({'error': 'Producto no encontrado'}), 404
+    elif descripcion:
+        # Búsqueda parcial por descripción
+        productos = list(db.productos.find({'descripcion': {'$regex': descripcion, '$options': 'i'}}, {'_id': 0}))
+        return jsonify(productos)
+    else:
+        return jsonify({'error': 'Parámetro requerido'}), 400
 
 @app.route('/cargar_productos', methods=['POST'])
 def cargar_productos():
