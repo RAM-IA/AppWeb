@@ -85,7 +85,6 @@ def eliminar_usuario():
     db.usuarios.delete_one({'id': id})
     return redirect('/usuarios')
 
-# Las demás opciones del menú solo muestran un mensaje por ahora
 @app.route('/ventas')
 def ventas():
     return "<h2>Ventas</h2><a href='/'>Volver al menú principal</a>"
@@ -94,9 +93,95 @@ def ventas():
 def compras():
     return "<h2>Compras</h2><a href='/'>Volver al menú principal</a>"
 
-@app.route('/productos')
+@app.route('/productos', methods=['GET'])
 def productos():
-    return "<h2>Productos</h2><a href='/'>Volver al menú principal</a>"
+    html = '''
+    <h2>Gestión de Productos</h2>
+    <form action='/agregar_producto' method='post'>
+      <input type='text' name='codigo_barras' placeholder='Código de Barras' required>
+      <input type='text' name='clave_corta' placeholder='Clave Corta' required>
+      <input type='text' name='descripcion' placeholder='Descripción' required>
+      <input type='text' name='unidad' placeholder='Unidad' required>
+      <input type='number' step='0.01' name='precio' placeholder='Precio' required>
+      <input type='number' step='0.01' name='costo' placeholder='Costo' required>
+      <input type='number' step='0.01' name='existencia' placeholder='Existencia' required>
+      <button type='submit'>Agregar producto</button>
+    </form>
+    <form action='/modificar_producto' method='post' style='margin-top:10px;'>
+      <input type='text' name='codigo_barras' placeholder='Código de Barras a modificar' required>
+      <input type='text' name='clave_corta' placeholder='Nueva Clave Corta'>
+      <input type='text' name='descripcion' placeholder='Nueva Descripción'>
+      <input type='text' name='unidad' placeholder='Nueva Unidad'>
+      <input type='number' step='0.01' name='precio' placeholder='Nuevo Precio'>
+      <input type='number' step='0.01' name='costo' placeholder='Nuevo Costo'>
+      <input type='number' step='0.01' name='existencia' placeholder='Nueva Existencia'>
+      <button type='submit'>Modificar producto</button>
+    </form>
+    <form action='/eliminar_producto' method='post' style='margin-top:10px;'>
+      <input type='text' name='codigo_barras' placeholder='Código de Barras a eliminar' required>
+      <button type='submit'>Eliminar producto</button>
+    </form>
+    <hr>
+    <h3>Productos actuales:</h3>
+    <ul>
+    '''
+    productos = list(db.productos.find({}, {'_id': 0}))
+    for p in productos:
+        html += f"<li>{p}</li>"
+    html += "</ul><a href='/'>Volver al menú principal</a>"
+    return html
+
+@app.route('/agregar_producto', methods=['POST'])
+def agregar_producto():
+    codigo_barras = request.form.get('codigo_barras')
+    clave_corta = request.form.get('clave_corta')
+    descripcion = request.form.get('descripcion')
+    unidad = request.form.get('unidad')
+    precio = float(request.form.get('precio'))
+    costo = float(request.form.get('costo'))
+    existencia = float(request.form.get('existencia'))
+    db.productos.insert_one({
+        'codigo_barras': codigo_barras,
+        'clave_corta': clave_corta,
+        'descripcion': descripcion,
+        'unidad': unidad,
+        'precio': precio,
+        'costo': costo,
+        'existencia': existencia
+    })
+    return redirect('/productos')
+
+@app.route('/modificar_producto', methods=['POST'])
+def modificar_producto():
+    codigo_barras = request.form.get('codigo_barras')
+    clave_corta = request.form.get('clave_corta')
+    descripcion = request.form.get('descripcion')
+    unidad = request.form.get('unidad')
+    precio = request.form.get('precio')
+    costo = request.form.get('costo')
+    existencia = request.form.get('existencia')
+    update = {}
+    if clave_corta:
+        update['clave_corta'] = clave_corta
+    if descripcion:
+        update['descripcion'] = descripcion
+    if unidad:
+        update['unidad'] = unidad
+    if precio:
+        update['precio'] = float(precio)
+    if costo:
+        update['costo'] = float(costo)
+    if existencia:
+        update['existencia'] = float(existencia)
+    if update:
+        db.productos.update_one({'codigo_barras': codigo_barras}, {'$set': update})
+    return redirect('/productos')
+
+@app.route('/eliminar_producto', methods=['POST'])
+def eliminar_producto():
+    codigo_barras = request.form.get('codigo_barras')
+    db.productos.delete_one({'codigo_barras': codigo_barras})
+    return redirect('/productos')
 
 @app.route('/clientes')
 def clientes():
