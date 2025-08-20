@@ -8,7 +8,7 @@ CORS(app)
 
 # Conexión a MongoDB Atlas
 import os
-mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramsj:LeoyDem01@cluster0.1fgzarl.mongodb.net/")
+mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramsj:<db_password>@cluster0.1fgzarl.mongodb.net/dbapp?retryWrites=true&w=majority&appName=Cluster0")
 client = MongoClient(mongo_uri)
 db = client.get_database('dbapp')  
 usuarios = db['usuarios']
