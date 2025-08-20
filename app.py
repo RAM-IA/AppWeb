@@ -112,6 +112,35 @@ def buscar_producto():
     html += "<a href='/productos'>Volver a Productos</a>"
     return html
 
+@app.route('/cargar_productos', methods=['POST'])
+def cargar_productos():
+    import pandas as pd
+    from werkzeug.utils import secure_filename
+    file = request.files.get('archivo')
+    if not file:
+        return "<h2>Error: No se recibió archivo.</h2><a href='/productos'>Volver a Productos</a>"
+    filename = secure_filename(file.filename)
+    filepath = f"/tmp/{filename}"
+    file.save(filepath)
+    try:
+        df = pd.read_excel(filepath)
+        # Espera columnas: codigo_barras, descripcion, unidad, precio, costo, existencia
+        for _, row in df.iterrows():
+            if db.productos.find_one({'codigo_barras': str(row['codigo_barras'])}):
+                continue  # No duplicar
+            db.productos.insert_one({
+                'codigo_barras': str(row['codigo_barras']),
+                'descripcion': str(row['descripcion']),
+                'unidad': str(row['unidad']),
+                'precio': float(row['precio']),
+                'costo': float(row['costo']),
+                'existencia': float(row['existencia'])
+            })
+        return "<h2>Catálogo cargado correctamente.</h2><a href='/productos'>Volver a Productos</a>"
+    except Exception as e:
+        return f"<h2>Error al procesar archivo: {e}</h2><a href='/productos'>Volver a Productos</a>"
+
+# Agrega el formulario en la página de productos
 @app.route('/productos', methods=['GET'])
 def productos():
     html = '''
@@ -140,6 +169,10 @@ def productos():
     </form>
     <form action='/buscar_producto' method='get' style='margin-top:10px;'>
       <button type='submit'>Buscar producto</button>
+    </form>
+    <form action='/cargar_productos' method='post' enctype='multipart/form-data' style='margin-top:10px;'>
+      <input type='file' name='archivo' accept='.xlsx' required>
+      <button type='submit'>Cargar catálogo desde Excel</button>
     </form>
     <hr>
     <h3>Filtrar productos:</h3>
