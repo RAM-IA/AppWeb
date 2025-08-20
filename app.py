@@ -93,13 +93,31 @@ def ventas():
 def compras():
     return "<h2>Compras</h2><a href='/'>Volver al menú principal</a>"
 
+@app.route('/buscar_producto', methods=['GET', 'POST'])
+def buscar_producto():
+    html = '''
+    <h2>Buscar Producto</h2>
+    <form action='/buscar_producto' method='post'>
+      <input type='text' name='codigo_barras' placeholder='Código de Barras (ID)' required>
+      <button type='submit'>Buscar</button>
+    </form>
+    '''
+    if request.method == 'POST':
+        codigo_barras = request.form.get('codigo_barras')
+        producto = db.productos.find_one({'codigo_barras': codigo_barras}, {'_id': 0})
+        if producto:
+            html += f"<h3>Resultado:</h3><pre>{producto}</pre>"
+        else:
+            html += "<h3>No se encontró el producto.</h3>"
+    html += "<a href='/productos'>Volver a Productos</a>"
+    return html
+
 @app.route('/productos', methods=['GET'])
 def productos():
     html = '''
     <h2>Gestión de Productos</h2>
     <form action='/agregar_producto' method='post'>
-      <input type='text' name='codigo_barras' placeholder='Código de Barras' required>
-      <input type='text' name='clave_corta' placeholder='Clave Corta' required>
+      <input type='text' name='codigo_barras' placeholder='Código de Barras (ID)' required>
       <input type='text' name='descripcion' placeholder='Descripción' required>
       <input type='text' name='unidad' placeholder='Unidad' required>
       <input type='number' step='0.01' name='precio' placeholder='Precio' required>
@@ -108,8 +126,7 @@ def productos():
       <button type='submit'>Agregar producto</button>
     </form>
     <form action='/modificar_producto' method='post' style='margin-top:10px;'>
-      <input type='text' name='codigo_barras' placeholder='Código de Barras a modificar' required>
-      <input type='text' name='clave_corta' placeholder='Nueva Clave Corta'>
+      <input type='text' name='codigo_barras' placeholder='Código de Barras (ID) a modificar' required>
       <input type='text' name='descripcion' placeholder='Nueva Descripción'>
       <input type='text' name='unidad' placeholder='Nueva Unidad'>
       <input type='number' step='0.01' name='precio' placeholder='Nuevo Precio'>
@@ -118,31 +135,55 @@ def productos():
       <button type='submit'>Modificar producto</button>
     </form>
     <form action='/eliminar_producto' method='post' style='margin-top:10px;'>
-      <input type='text' name='codigo_barras' placeholder='Código de Barras a eliminar' required>
+      <input type='text' name='codigo_barras' placeholder='Código de Barras (ID) a eliminar' required>
       <button type='submit'>Eliminar producto</button>
     </form>
+    <form action='/buscar_producto' method='get' style='margin-top:10px;'>
+      <button type='submit'>Buscar producto</button>
+    </form>
     <hr>
-    <h3>Productos actuales:</h3>
-    <ul>
+    <h3>Filtrar productos:</h3>
+    <input type='text' id='filtro' placeholder='Escribe para filtrar...'>
+    <ul id='lista-productos'>
     '''
     productos = list(db.productos.find({}, {'_id': 0}))
     for p in productos:
-        html += f"<li>{p}</li>"
-    html += "</ul><a href='/'>Volver al menú principal</a>"
+        html += f"<li class='producto-item'>{p}</li>"
+    html += """</ul><a href='/'>Volver al menú principal</a>
+    <script>
+    const filtro = document.getElementById('filtro');
+    const items = document.querySelectorAll('.producto-item');
+    filtro.addEventListener('input', function() {
+      const texto = filtro.value.toLowerCase();
+      items.forEach(function(item) {
+        if (item.textContent.toLowerCase().includes(texto)) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+    </script>
+    """
     return html
 
 @app.route('/agregar_producto', methods=['POST'])
 def agregar_producto():
     codigo_barras = request.form.get('codigo_barras')
-    clave_corta = request.form.get('clave_corta')
     descripcion = request.form.get('descripcion')
     unidad = request.form.get('unidad')
     precio = float(request.form.get('precio'))
     costo = float(request.form.get('costo'))
     existencia = float(request.form.get('existencia'))
+    # Verificar que el código de barras no exista
+    if db.productos.find_one({'codigo_barras': codigo_barras}):
+        html = """
+        <h2>Error: El código de barras ya existe en el catálogo.</h2>
+        <a href='/productos'>Volver a Productos</a>
+        """
+        return html
     db.productos.insert_one({
         'codigo_barras': codigo_barras,
-        'clave_corta': clave_corta,
         'descripcion': descripcion,
         'unidad': unidad,
         'precio': precio,
@@ -154,15 +195,12 @@ def agregar_producto():
 @app.route('/modificar_producto', methods=['POST'])
 def modificar_producto():
     codigo_barras = request.form.get('codigo_barras')
-    clave_corta = request.form.get('clave_corta')
     descripcion = request.form.get('descripcion')
     unidad = request.form.get('unidad')
     precio = request.form.get('precio')
     costo = request.form.get('costo')
     existencia = request.form.get('existencia')
     update = {}
-    if clave_corta:
-        update['clave_corta'] = clave_corta
     if descripcion:
         update['descripcion'] = descripcion
     if unidad:
