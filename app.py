@@ -104,11 +104,6 @@ def modificar_usuario():
 def eliminar_usuario():
     id = request.form.get('id')
     db.usuarios.delete_one({'id': id})
-            resultadosDiv.innerHTML = `<table style='width:100%;border-collapse:collapse;'>`
-                + `<thead><tr style='background:#f0f0f0;'><th style='text-align:left;padding:4px;'>Descripción</th><th style='text-align:right;padding:4px;'>Precio</th></tr></thead>`
-                + `<tbody>`
-                + resultados.map((p, i) => `<tr class='resultado-item' style='cursor:pointer;background:${i===seleccionIdx?'#e0e0ff':'#fff'}'><td style='padding:4px;'>${p.descripcion}</td><td style='padding:4px;text-align:right;'>$${p.precio}</td></tr>`).join('')
-                + `</tbody></table>`;
 
 @app.route('/ventas')
 def ventas():
