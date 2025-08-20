@@ -122,11 +122,13 @@ def cargar_productos():
     filename = secure_filename(file.filename)
     filepath = f"/tmp/{filename}"
     file.save(filepath)
+    import traceback
     try:
         df = pd.read_excel(filepath)
         required_cols = ['codigo_barras', 'descripcion', 'unidad', 'precio', 'costo', 'existencia']
         for col in required_cols:
             if col not in df.columns:
+                print(f"Error: Falta la columna '{col}' en el archivo.")
                 return f"<h2>Error: Falta la columna '{col}' en el archivo.</h2><a href='/productos'>Volver a Productos</a>"
         for i, row in df.iterrows():
             try:
@@ -141,9 +143,14 @@ def cargar_productos():
                     'existencia': float(row['existencia'])
                 })
             except Exception as e:
+                print(f"Error en la fila {i+2}: {e}")
+                traceback.print_exc()
                 return f"<h2>Error en la fila {i+2}: {e}</h2><a href='/productos'>Volver a Productos</a>"
+        print("Catálogo cargado correctamente.")
         return "<h2>Catálogo cargado correctamente.</h2><a href='/productos'>Volver a Productos</a>"
     except Exception as e:
+        print(f"Error al procesar archivo: {e}")
+        traceback.print_exc()
         return f"<h2>Error al procesar archivo: {e}</h2><a href='/productos'>Volver a Productos</a>"
 
 # Agrega el formulario en la página de productos
