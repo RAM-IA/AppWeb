@@ -83,6 +83,7 @@ def usuarios():
 def agregar_usuario():
     id = request.form.get('id')
     nombre = request.form.get('nombre')
+                    seleccionIdx = 0; // Reset selection index
     direccion = request.form.get('direccion')
     db.usuarios.insert_one({'id': id, 'nombre': nombre, 'direccion': direccion})
     return redirect('/usuarios')
@@ -105,7 +106,11 @@ def modificar_usuario():
 def eliminar_usuario():
     id = request.form.get('id')
     db.usuarios.delete_one({'id': id})
-    return redirect('/usuarios')
+            resultadosDiv.innerHTML = `<table style='width:100%;border-collapse:collapse;'>`
+                + `<thead><tr style='background:#f0f0f0;'><th style='text-align:left;padding:4px;'>Descripción</th><th style='text-align:right;padding:4px;'>Precio</th></tr></thead>`
+                + `<tbody>`
+                + resultados.map((p, i) => `<tr class='resultado-item' style='cursor:pointer;background:${i===seleccionIdx?'#e0e0ff':'#fff'}'><td style='padding:4px;'>${p.descripcion}</td><td style='padding:4px;text-align:right;'>$${p.precio}</td></tr>`).join('')
+                + `</tbody></table>`;
 
 @app.route('/ventas')
 def ventas():
@@ -119,7 +124,9 @@ def ventas():
         .venta-total { font-size: 2.5em; color: #007bff; text-align: right; margin-top: 20px; }
         .venta-cambio { font-size: 2em; color: #28a745; text-align: right; margin-top: 10px; }
         </style>
-        <div class="venta-container">
+            let tr = e.target.closest('tr.resultado-item');
+            if (!tr) return;
+            let idx = Array.from(resultadosDiv.querySelectorAll('tr.resultado-item')).indexOf(tr);
             <h2>Captura de Venta</h2>
             <form class="venta-form" id="form-agregar" autocomplete="off">
                 <input type="number" min="1" value="1" id="cantidad" placeholder="Cantidad" style="display:none">
