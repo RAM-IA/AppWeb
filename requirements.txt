@@ -2,5 +2,5 @@ flask
 flask-cors
 pymongo
 gunicorn
- pandas
- openpyxl
+pandas
+openpyxl
