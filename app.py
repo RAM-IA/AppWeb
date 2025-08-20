@@ -13,6 +13,8 @@ client = MongoClient(mongo_uri)
 db = client.get_database('dbapp')  
 usuarios = db['usuarios']
 print(list(usuarios.find()))
+print(client.list_database_names())
+print(db.list_collection_names())
 
 @app.route('/')
 def home():
