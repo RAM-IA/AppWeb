@@ -1,3 +1,17 @@
+from flask import Flask, request, redirect
+from flask_cors import CORS
+from pymongo import MongoClient
+
+app = Flask(__name__)
+# Habilitar CORS
+CORS(app)
+
+# Conexión a MongoDB Atlas
+import os
+mongo_uri = os.environ.get('MONGO_URI', "mongodb+srv://ramsj:LeoyDem01@cluster0.1fgzarl.mongodb.net/")
+client = MongoClient(mongo_uri)
+db = client.get_database('dbapp')  
+
 @app.route('/guardar_venta', methods=['POST'])
 def guardar_venta():
     data = request.get_json()
