@@ -78,12 +78,11 @@ def usuarios():
         html += f"<li>{u}</li>"
     html += "</ul><a href='/'>Volver al menú principal</a>"
     return html
-
+startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
 @app.route('/agregar_usuario', methods=['POST'])
 def agregar_usuario():
     id = request.form.get('id')
     nombre = request.form.get('nombre')
-                    seleccionIdx = 0; // Reset selection index
     direccion = request.form.get('direccion')
     db.usuarios.insert_one({'id': id, 'nombre': nombre, 'direccion': direccion})
     return redirect('/usuarios')
