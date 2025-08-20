@@ -1,3 +1,11 @@
+@app.route('/guardar_venta', methods=['POST'])
+def guardar_venta():
+    data = request.get_json()
+    venta_enc = data.get('venta_enc')
+    venta_det = data.get('venta_det')
+    db.venta_enc.insert_one(venta_enc)
+    db.venta_det.insert_many(venta_det)
+    return 'Venta guardada correctamente.'
 from flask import Flask, request, redirect
 from flask_cors import CORS
 from pymongo import MongoClient
@@ -87,7 +95,124 @@ def eliminar_usuario():
 
 @app.route('/ventas')
 def ventas():
-    return "<h2>Ventas</h2><a href='/'>Volver al menú principal</a>"
+        html = '''
+        <style>
+        body { font-family: Arial, sans-serif; background: #f8f8f8; }
+        .venta-container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 10px; box-shadow: 0 0 10px #ccc; padding: 30px; }
+        .venta-form input, .venta-form select { font-size: 1.2em; margin: 5px; }
+        .venta-list { margin-top: 20px; }
+        .venta-list th, .venta-list td { font-size: 1.2em; padding: 5px 10px; }
+        .venta-total { font-size: 2.5em; color: #007bff; text-align: right; margin-top: 20px; }
+        .venta-cambio { font-size: 2em; color: #28a745; text-align: right; margin-top: 10px; }
+        </style>
+        <div class="venta-container">
+            <h2>Captura de Venta</h2>
+            <form class="venta-form" id="form-agregar">
+                <input type="number" min="1" value="1" id="cantidad" placeholder="Cantidad" required>
+                <input type="text" id="codigo_barras" placeholder="Código de Barras" autofocus>
+                <input type="text" id="descripcion" placeholder="Descripción">
+                <button type="submit">Agregar</button>
+            </form>
+            <table class="venta-list" id="tabla-productos" style="width:100%">
+                <thead><tr><th>Cant</th><th>Código</th><th>Descripción</th><th>Precio</th><th>Importe</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div class="venta-total" id="total">$0.00</div>
+            <div class="venta-cambio" id="cambio" style="display:none"></div>
+            <button id="guardar" style="margin-top:20px;font-size:1.2em;">Guardar venta</button>
+            <a href="/">Volver al menú principal</a>
+        </div>
+        <script>
+        let productos = [];
+        let total = 0;
+        let ticketId = Date.now();
+        function actualizarTabla() {
+            const tbody = document.querySelector('#tabla-productos tbody');
+            tbody.innerHTML = '';
+            total = 0;
+            productos.forEach((p, i) => {
+                const importe = p.precio * p.cantidad;
+                total += importe;
+                tbody.innerHTML += `<tr><td><input type='number' min='1' value='${p.cantidad}' data-idx='${i}' class='cantidad-input' style='width:50px'></td><td>${p.codigo_barras}</td><td>${p.descripcion}</td><td>$${p.precio.toFixed(2)}</td><td>$${importe.toFixed(2)}</td></tr>`;
+            });
+            document.getElementById('total').textContent = '$' + total.toFixed(2);
+        }
+        document.getElementById('form-agregar').onsubmit = async function(e) {
+            e.preventDefault();
+            let cantidad = parseInt(document.getElementById('cantidad').value);
+            let codigo = document.getElementById('codigo_barras').value.trim();
+            let desc = document.getElementById('descripcion').value.trim();
+            if (!codigo && !desc) return alert('Ingresa código o descripción');
+            let producto = null;
+            if (codigo) {
+                let res = await fetch(`/buscar_producto?codigo_barras=${codigo}`);
+                let data = await res.text();
+                let match = data.match(/'descripcion': '([^']+)'/);
+                let precioMatch = data.match(/'precio': ([0-9.]+)/);
+                if (match && precioMatch) {
+                    producto = {codigo_barras: codigo, descripcion: match[1], precio: parseFloat(precioMatch[1])};
+                } else {
+                    return alert('Producto no encontrado');
+                }
+            } else if (desc) {
+                let res = await fetch(`/productos`);
+                let html = await res.text();
+                let regex = new RegExp(`<li class='producto-item'>.*'descripcion': '${desc}'.*?</li>`, 'i');
+                let item = html.match(regex);
+                if (item) {
+                    let codMatch = item[0].match(/'codigo_barras': '([^']+)'/);
+                    let precioMatch = item[0].match(/'precio': ([0-9.]+)/);
+                    if (codMatch && precioMatch) {
+                        producto = {codigo_barras: codMatch[1], descripcion: desc, precio: parseFloat(precioMatch[1])};
+                    }
+                }
+                if (!producto) return alert('Producto no encontrado por descripción');
+            }
+            productos.push({cantidad, ...producto});
+            actualizarTabla();
+            document.getElementById('form-agregar').reset();
+            document.getElementById('codigo_barras').focus();
+        };
+        document.getElementById('tabla-productos').addEventListener('input', function(e) {
+            if (e.target.classList.contains('cantidad-input')) {
+                let idx = e.target.getAttribute('data-idx');
+                productos[idx].cantidad = parseInt(e.target.value);
+                actualizarTabla();
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                let efectivo = prompt('Efectivo recibido:');
+                if (efectivo !== null) {
+                    let cambio = parseFloat(efectivo) - total;
+                    document.getElementById('cambio').style.display = '';
+                    document.getElementById('cambio').textContent = 'Cambio: $' + cambio.toFixed(2);
+                    setTimeout(() => {
+                        productos = [];
+                        actualizarTabla();
+                        document.getElementById('cambio').style.display = 'none';
+                    }, 4000);
+                }
+            }
+        });
+        document.getElementById('guardar').onclick = async function() {
+            if (productos.length === 0) return alert('Agrega productos');
+            let venta_enc = {ticket_id: ticketId, fecha: new Date().toISOString(), cliente: 1, total};
+            let venta_det = productos.map(p => ({ticket_id: ticketId, id_producto: p.codigo_barras, cantidad: p.cantidad, precio: p.precio}));
+            let res = await fetch('/guardar_venta', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({venta_enc, venta_det})
+            });
+            let msg = await res.text();
+            alert(msg);
+            productos = [];
+            actualizarTabla();
+            ticketId = Date.now();
+        };
+        </script>
+        '''
+        return html
 
 @app.route('/compras')
 def compras():
