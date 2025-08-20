@@ -124,18 +124,24 @@ def cargar_productos():
     file.save(filepath)
     try:
         df = pd.read_excel(filepath)
-        # Espera columnas: codigo_barras, descripcion, unidad, precio, costo, existencia
-        for _, row in df.iterrows():
-            if db.productos.find_one({'codigo_barras': str(row['codigo_barras'])}):
-                continue  # No duplicar
-            db.productos.insert_one({
-                'codigo_barras': str(row['codigo_barras']),
-                'descripcion': str(row['descripcion']),
-                'unidad': str(row['unidad']),
-                'precio': float(row['precio']),
-                'costo': float(row['costo']),
-                'existencia': float(row['existencia'])
-            })
+        required_cols = ['codigo_barras', 'descripcion', 'unidad', 'precio', 'costo', 'existencia']
+        for col in required_cols:
+            if col not in df.columns:
+                return f"<h2>Error: Falta la columna '{col}' en el archivo.</h2><a href='/productos'>Volver a Productos</a>"
+        for i, row in df.iterrows():
+            try:
+                if db.productos.find_one({'codigo_barras': str(row['codigo_barras'])}):
+                    continue  # No duplicar
+                db.productos.insert_one({
+                    'codigo_barras': str(row['codigo_barras']),
+                    'descripcion': str(row['descripcion']),
+                    'unidad': str(row['unidad']),
+                    'precio': float(row['precio']),
+                    'costo': float(row['costo']),
+                    'existencia': float(row['existencia'])
+                })
+            except Exception as e:
+                return f"<h2>Error en la fila {i+2}: {e}</h2><a href='/productos'>Volver a Productos</a>"
         return "<h2>Catálogo cargado correctamente.</h2><a href='/productos'>Volver a Productos</a>"
     except Exception as e:
         return f"<h2>Error al procesar archivo: {e}</h2><a href='/productos'>Volver a Productos</a>"
