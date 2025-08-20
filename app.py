@@ -15,7 +15,7 @@ db = client.get_database('dbapp')
 @app.route('/')
 def menu():
     html = '''
-    <h2>Menú principal</h2>
+    <h2>Menú principal v 1</h2>
     <form action="/ventas" method="get"><button type="submit">Ventas</button></form>
     <form action="/compras" method="get"><button type="submit">Compras</button></form>
     <form action="/productos" method="get"><button type="submit">Productos</button></form>
@@ -120,7 +120,7 @@ def cargar_productos():
     if not file:
         return "<h2>Error: No se recibió archivo.</h2><a href='/productos'>Volver a Productos</a>"
     filename = secure_filename(file.filename)
-    filepath = f"/tmp/{filename}"
+    filepath = f"./{filename}"
     file.save(filepath)
     import traceback
     try:
