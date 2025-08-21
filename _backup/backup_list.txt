@@ -1,0 +1,15 @@
+Archivos y carpetas que serán eliminados:
+- backend/app.js
+- backend/models/Tarea.js
+- backend/models/
+- backend/README.md
+- backend/
+- db/ (vacía)
+- frontend/app.js
+- frontend/index.html
+- frontend/style.css
+- frontend/
+- node_modules/ (y todo su contenido)
+- package-lock.json
+- package.json
+- get-pip.py

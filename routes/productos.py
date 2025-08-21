@@ -1,0 +1,177 @@
+from flask import Blueprint, request, redirect, jsonify
+from db import db
+
+productos_bp = Blueprint('productos', __name__)
+
+# Agrega el formulario en la página de productos
+@productos_bp.route('/productos', methods=['GET'])
+def productos():
+        html = '''
+        <h2>Gestión de Productos</h2>
+        <form action='/agregar_producto' method='post'>
+            <input type='text' name='codigo_barras' placeholder='Código de Barras (ID)' required>
+            <input type='text' name='descripcion' placeholder='Descripción' required>
+            <input type='text' name='unidad' placeholder='Unidad' required>
+            <input type='number' step='0.01' name='precio' placeholder='Precio' required>
+            <input type='number' step='0.01' name='costo' placeholder='Costo' required>
+            <input type='number' step='0.01' name='existencia' placeholder='Existencia' required>
+            <button type='submit'>Agregar producto</button>
+        </form>
+        <form action='/modificar_producto' method='post' style='margin-top:10px;'>
+            <input type='text' name='codigo_barras' placeholder='Código de Barras (ID) a modificar' required>
+            <input type='text' name='descripcion' placeholder='Nueva Descripción'>
+            <input type='text' name='unidad' placeholder='Nueva Unidad'>
+            <input type='number' step='0.01' name='precio' placeholder='Nuevo Precio'>
+            <input type='number' step='0.01' name='costo' placeholder='Nuevo Costo'>
+            <input type='number' step='0.01' name='existencia' placeholder='Nueva Existencia'>
+            <button type='submit'>Modificar producto</button>
+        </form>
+        <form action='/eliminar_producto' method='post' style='margin-top:10px;'>
+            <input type='text' name='codigo_barras' placeholder='Código de Barras (ID) a eliminar' required>
+            <button type='submit'>Eliminar producto</button>
+        </form>
+        <form action='/buscar_producto' method='get' style='margin-top:10px;'>
+            <button type='submit'>Buscar producto</button>
+        </form>
+        <form action='/cargar_productos' method='post' enctype='multipart/form-data' style='margin-top:10px;'>
+            <input type='file' name='archivo' accept='.xlsx' required>
+            <button type='submit'>Cargar catálogo desde Excel</button>
+        </form>
+        <hr>
+        <h3>Filtrar productos:</h3>
+        <input type='text' id='filtro' placeholder='Escribe para filtrar...'>
+        <ul id='lista-productos'>
+        '''
+        productos = list(db.productos.find({}, {'_id': 0}))
+        for p in productos:
+                html += f"<li class='producto-item'>{p}</li>"
+        html += """</ul><a href='/'>Volver al menú principal</a>
+        <script>
+        const filtro = document.getElementById('filtro');
+        const items = document.querySelectorAll('.producto-item');
+        filtro.addEventListener('input', function() {
+            const texto = filtro.value.toLowerCase();
+            items.forEach(function(item) {
+                if (item.textContent.toLowerCase().includes(texto)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+        </script>
+        """
+        return html
+
+@productos_bp.route('/buscar_producto', methods=['GET'])
+def buscar_producto():
+    codigo_barras = request.args.get('codigo_barras')
+    descripcion = request.args.get('descripcion')
+    if codigo_barras:
+        producto = db.productos.find_one({'codigo_barras': codigo_barras}, {'_id': 0})
+        if producto:
+            return jsonify(producto)
+        else:
+            return jsonify({'error': 'Producto no encontrado'}), 404
+    elif descripcion:
+        # Búsqueda parcial por descripción
+        productos = list(db.productos.find({'descripcion': {'$regex': descripcion, '$options': 'i'}}, {'_id': 0}))
+        return jsonify(productos)
+    else:
+        return jsonify({'error': 'Parámetro requerido'}), 400
+
+@productos_bp.route('/cargar_productos', methods=['POST'])
+def cargar_productos():
+    import pandas as pd
+    from werkzeug.utils import secure_filename
+    file = request.files.get('archivo')
+    if not file:
+        return "<h2>Error: No se recibió archivo.</h2><a href='/productos'>Volver a Productos</a>"
+    filename = secure_filename(file.filename)
+    filepath = f"./{filename}"
+    file.save(filepath)
+    import traceback
+    try:
+        df = pd.read_excel(filepath)
+        required_cols = ['codigo_barras', 'descripcion', 'unidad', 'precio', 'costo', 'existencia']
+        for col in required_cols:
+            if col not in df.columns:
+                print(f"Error: Falta la columna '{col}' en el archivo.")
+                return f"<h2>Error: Falta la columna '{col}' en el archivo.</h2><a href='/productos'>Volver a Productos</a>"
+        for i, row in df.iterrows():
+            try:
+                if db.productos.find_one({'codigo_barras': str(row['codigo_barras'])}):
+                    continue  # No duplicar
+                db.productos.insert_one({
+                    'codigo_barras': str(row['codigo_barras']),
+                    'descripcion': str(row['descripcion']),
+                    'unidad': str(row['unidad']),
+                    'precio': float(row['precio']),
+                    'costo': float(row['costo']),
+                    'existencia': float(row['existencia'])
+                })
+            except Exception as e:
+                print(f"Error en la fila {i+2}: {e}")
+                traceback.print_exc()
+                return f"<h2>Error en la fila {i+2}: {e}</h2><a href='/productos'>Volver a Productos</a>"
+        print("Catálogo cargado correctamente.")
+        return "<h2>Catálogo cargado correctamente.</h2><a href='/productos'>Volver a Productos</a>"
+    except Exception as e:
+        print(f"Error al procesar archivo: {e}")
+        traceback.print_exc()
+        return f"<h2>Error al procesar archivo: {e}</h2><a href='/productos'>Volver a Productos</a>"
+
+@productos_bp.route('/agregar_producto', methods=['POST'])
+def agregar_producto():
+    codigo_barras = request.form.get('codigo_barras')
+    descripcion = request.form.get('descripcion')
+    unidad = request.form.get('unidad')
+    precio = float(request.form.get('precio'))
+    costo = float(request.form.get('costo'))
+    existencia = float(request.form.get('existencia'))
+    # Verificar que el código de barras no exista
+    if db.productos.find_one({'codigo_barras': codigo_barras}):
+        html = """
+        <h2>Error: El código de barras ya existe en el catálogo.</h2>
+        <a href='/productos'>Volver a Productos</a>
+        """
+        return html
+    db.productos.insert_one({
+        'codigo_barras': codigo_barras,
+        'descripcion': descripcion,
+        'unidad': unidad,
+        'precio': precio,
+        'costo': costo,
+        'existencia': existencia
+    })
+    return redirect('/productos')
+
+@productos_bp.route('/modificar_producto', methods=['POST'])
+def modificar_producto():
+    codigo_barras = request.form.get('codigo_barras')
+    descripcion = request.form.get('descripcion')
+    unidad = request.form.get('unidad')
+    precio = request.form.get('precio')
+    costo = request.form.get('costo')
+    existencia = request.form.get('existencia')
+    update = {}
+    if descripcion:
+        update['descripcion'] = descripcion
+    if unidad:
+        update['unidad'] = unidad
+    if precio:
+        update['precio'] = float(precio)
+    if costo:
+        update['costo'] = float(costo)
+    if existencia:
+        update['existencia'] = float(existencia)
+    if update:
+        db.productos.update_one({'codigo_barras': codigo_barras}, {'$set': update})
+    return redirect('/productos')
+
+@productos_bp.route('/eliminar_producto', methods=['POST'])
+def eliminar_producto():
+    codigo_barras = request.form.get('codigo_barras')
+    db.productos.delete_one({'codigo_barras': codigo_barras})
+    return redirect('/productos')
+
