@@ -1,7 +1,36 @@
-from flask import Blueprint, request, redirect
+
+from flask import Blueprint, request, redirect, jsonify
 from db import db
 
 usuarios_bp = Blueprint('usuarios', __name__)
+
+# Endpoint para login
+@usuarios_bp.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json()
+    nombre = data.get('nombre')
+    contrasena = data.get('contrasena')
+    usuario = db.usuarios.find_one({'nombre': nombre, 'contrasena': contrasena}, {'_id': 0})
+    if usuario:
+        return jsonify({'success': True, 'usuario': usuario}), 200
+    else:
+        return jsonify({'success': False, 'msg': 'Usuario o contraseña incorrectos'}), 401
+
+# API REST para gestión de usuarios
+@usuarios_bp.route('/api/usuarios', methods=['GET'])
+def api_get_usuarios():
+    usuarios = list(db.usuarios.find({}, {'_id': 0}))
+    return jsonify(usuarios)
+
+@usuarios_bp.route('/api/usuarios', methods=['POST'])
+def api_add_usuario():
+    data = request.get_json()
+    id = data.get('id')
+    nombre = data.get('nombre')
+    contrasena = data.get('contrasena')
+    rol = data.get('rol', 'usuario')
+    db.usuarios.insert_one({'id': id, 'nombre': nombre, 'contrasena': contrasena, 'rol': rol})
+    return jsonify({'msg': 'Usuario agregado'}), 200
 
 @usuarios_bp.route('/usuarios', methods=['GET'])
 def usuarios():
@@ -45,12 +74,15 @@ def agregar_usuario():
 def modificar_usuario():
     id = request.form.get('id')
     nombre = request.form.get('nombre')
-    direccion = request.form.get('direccion')
+    contrasena = request.form.get('contrasena')
+    rol = request.form.get('rol')
     update = {}
     if nombre:
         update['nombre'] = nombre
-    if direccion:
-        update['direccion'] = direccion
+    if contrasena:
+        update['contrasena'] = contrasena
+    if rol:
+        update['rol'] = rol
     if update:
         db.usuarios.update_one({'id': id}, {'$set': update})
     return redirect('/usuarios')

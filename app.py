@@ -1,43 +1,25 @@
-from flask import Flask, request, redirect, jsonify
+from flask import Flask, request, redirect, jsonify, send_from_directory
+from routes.usuarios import usuarios_bp
 from flask_cors import CORS
+import os
+
 
 app = Flask(__name__)
 # Habilitar CORS
 CORS(app)
 
+# Registrar blueprint de usuarios
+app.register_blueprint(usuarios_bp)
 
-
-@app.route('/')
-def menu():
-    html = '''
-    <h2>Menú principal v 1</h2>
-    <form action="/ventas" method="get"><button type="submit">Ventas</button></form>
-    <form action="/compras" method="get"><button type="submit">Compras</button></form>
-    <form action="/productos" method="get"><button type="submit">Productos</button></form>
-    <form action="/clientes" method="get"><button type="submit">Clientes</button></form>
-    <form action="/proveedores" method="get"><button type="submit">Proveedores</button></form>
-    <form action="/gastos" method="get"><button type="submit">Gastos</button></form>
-    <form action="/cortes" method="get"><button type="submit">Cortes</button></form>
-    <form action="/usuarios" method="get"><button type="submit">Usuarios</button></form>
-    '''
-    return html
-
-@app.route('/compras')
-def compras():
-    return "<h2>Compras</h2><a href='/'>Volver al menú principal</a>"
-
-@app.route('/clientes')
-def clientes():
-    return "<h2>Clientes</h2><a href='/'>Volver al menú principal</a>"
-
-@app.route('/proveedores')
-def proveedores():
-    return "<h2>Proveedores</h2><a href='/'>Volver al menú principal</a>"
-
-@app.route('/gastos')
-def gastos():
-    return "<h2>Gastos</h2><a href='/'>Volver al menú principal</a>"
-
-@app.route('/cortes')
-def cortes():
-    return "<h2>Cortes</h2><a href='/'>Volver al menú principal</a>"
+# Servir Flutter Web desde build/web
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def flutter_app(path):
+	web_dir = os.path.join(os.path.dirname(__file__), 'flutter_app', 'build', 'web')
+	if path != "" and os.path.exists(os.path.join(web_dir, path)):
+		return send_from_directory(web_dir, path)
+	else:
+		return send_from_directory(web_dir, 'index.html')
+		
+if __name__ == '__main__':
+	app.run(debug=True)
